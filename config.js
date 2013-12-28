@@ -1,0 +1,10 @@
+﻿var CONFIG = {
+    HEAD_LOW_LIMIT: -1000,
+    HEAD_HIGH_LIMIT: 1000,
+    STEP_LIMIT: 50,
+    BLANK_SYMBOL: "_",
+    ANY_SYMBOL: "*",
+    ACCEPT_SYMBOL: "ACCEPT",
+    REJECT_SYMBOL: "REJECT"
+}
+

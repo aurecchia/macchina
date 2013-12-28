@@ -15,13 +15,8 @@ function Machine() {
 
     this.initialState = null;
     this.states = {};
-    this.EXECUTIONS = {
-        STOPPED: 0,
-        RUNNING: 1,
-        ACCEPTED: 2,
-        REJECTED: 3,
-        LOOPING: 4
-    }
+    this.execution = null;
+
 }
 
 Machine.prototype.addState = function (state) {
@@ -46,8 +41,9 @@ Machine.prototype.setInitialState = function (state) {
     this.initialState = state;
 }
 
-Machine.prototype.step = function () {
-
+Machine.prototype.run = function () {
+    this.execution = new Execution(this);
+    this.execution.run();
 }
 
 Machine.prototype.toString = function () {
@@ -59,63 +55,6 @@ Machine.prototype.toString = function () {
     }
 
     return strings.join("\n\n");
-}
-
-
-function Action() {
-    this.symbol = null;
-    this.direction = null;
-    this.state = null;
-}
-
-Action.prototype.write = function (symbol) {
-    check(typeof symbol === "string", this, symbol, "Not a string!");
-    check(symbol.length === 1, this, symbol, "Longer than 1!");
-
-    this.symbol = symbol;
-    return this;
-}
-
-Action.prototype.move = function (direction) {
-    // Add checks for direction
-
-    this.direction = direction;
-    return this;
-}
-
-Action.prototype.goto = function (state) {
-    // Add checks for state
-
-    this.state = state;
-    return this;
-}
-
-Action.prototype.accept = function () {
-    this.state = "ACCEPT";
-    return this;
-}
-
-Action.prototype.reject = function () {
-    this.state = "REJECT";
-    return this;
-}
-
-Action.prototype.toString = function () {
-    var repr = [];
-    if (this.symbol != null)
-        repr.push("write '" + this.symbol + "'");
-
-    if (this.direction != null)
-        repr.push("move " + this.direction);
-
-    if (this.state != null) {
-        if (this.state != "ACCEPT" && this.state != "REJECT")
-            repr.push("GOTO " + this.state);
-        else
-            repr.push(this.state);
-    }
-
-    return repr.join(", ");
 }
 
 
@@ -145,25 +84,35 @@ State.prototype.on = function(read) {
     return this.actions[read];
 }
 
+State.prototype.got = function(read) {
+    var action = this.actions[read];
+
+    if (action === undefined)
+        return this.actions[CONFIG.ANY_SYMBOL];
+
+    return action;
+}
 
 var tm = new Machine();
 
 
 tm.addState(new State("even"));
 
-tm.state("even").on("1").move("right").goto("odd");
-tm.state("even").on("0").move("left");
+tm.state("even").on("1").right().goto("odd");
+tm.state("even").on("*").right();
 tm.state("even").on("_").accept();
 
 
 tm.addState(new State("odd"));
 
-tm.state("odd").on("1").move("right").goto("even");
-tm.state("odd").on("0").move("right");
+tm.state("odd").on("*").right().goto("even");
+tm.state("odd").on("0").right();
 tm.state("odd").on("_").reject();
 
 
 console.log(tm.toString());
-console.log();
+
+tm.run();
+console.log(tm.execution.state);
 
 

@@ -41,9 +41,11 @@ Machine.prototype.setInitialState = function (state) {
     this.initialState = state;
 }
 
-Machine.prototype.run = function () {
+Machine.prototype.run = function (input) {
     this.execution = new Execution(this);
+    this.execution.setInput(input);
     this.execution.run();
+    return this.execution.state;
 }
 
 Machine.prototype.toString = function () {
@@ -96,23 +98,27 @@ State.prototype.got = function(read) {
 var tm = new Machine();
 
 
-tm.addState(new State("even"));
+//tm.addState(new State("even"));
 
-tm.state("even").on("1").right().goto("odd");
-tm.state("even").on("*").right();
-tm.state("even").on("_").accept();
+//tm.state("even").on("1").right().goto("odd");
+//tm.state("even").on("*").right();
+//tm.state("even").on("_").accept();
 
 
-tm.addState(new State("odd"));
+//tm.addState(new State("odd"));
 
-tm.state("odd").on("*").right().goto("even");
-tm.state("odd").on("0").right();
-tm.state("odd").on("_").reject();
+//tm.state("odd").on("*").right().goto("even");
+//tm.state("odd").on("0").right();
+//tm.state("odd").on("_").reject();
 
+tm.addState(new State("state"));
+
+tm.state("state").on("0").write("1").right();
+tm.state("state").on("1").write("0").right();
+tm.state("state").on("*").stop();
 
 console.log(tm.toString());
 
-tm.run();
-console.log(tm.execution.state);
+console.log(tm.run("10011101010010101101"));
 
 

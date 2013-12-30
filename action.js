@@ -15,8 +15,8 @@ Action.prototype.write = function (symbol) {
     check(typeof symbol === "string", this, symbol, "Not a string!");
     check(symbol.length === 1, this, symbol, "Longer than 1!");
 
-    //this.symbol = symbol;
-    this.symbol = function (execution) {
+    this.symbol = symbol;
+    this.applySymbol = function (execution) {
         execution.write(symbol);
     }
     return this;
@@ -60,6 +60,14 @@ Action.prototype.reject = function () {
     this.state = "REJECT";
     this.applyState = function (execution) {
         execution.reject();
+    }
+    return this;
+}
+
+Action.prototype.stop = function () {
+    this.state = "STOPPED";
+    this.applyState = function (execution) {
+        execution.stop();
     }
     return this;
 }

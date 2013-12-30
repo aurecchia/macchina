@@ -5,7 +5,6 @@ function Execution(machine) {
         RUNNING: "Running",
         ACCEPTED: "Accepted",
         REJECTED: "Rejected",
-        LOOPING: "Looping",
         ERROR: "Error"
     }
     this.machine = machine;
@@ -28,7 +27,6 @@ Execution.prototype.setInput = function (string) {
 }
 
 Execution.prototype.left = function () {
-    if (this.head <= CONFIG.HEAD_LOW_LIMIT)
         this.error("Reached low limit for head position.");
     this.head--;
 }
@@ -57,10 +55,11 @@ Execution.prototype.step = function () {
             this.state != this.EX_STATES.STOPPED)
         return;
 
-    console.log(this.toString());
-
     var symbol = this.read();
     var action = this.currentState.got(symbol);
+
+    console.log(this.toString());
+    console.log(">> " + action.toString());
 
     if (action === undefined)
         return this.error("Undefined action for symbol '" + symbol + "'");
@@ -72,14 +71,12 @@ Execution.prototype.step = function () {
     this.currentStep++;
 
     if (this.currentStep >= CONFIG.STEP_LIMIT)
-        this.looping();
+        this.error("Looping");
 
 }
 
 Execution.prototype.run = function () {
     this.state = this.EX_STATES.RUNNING;
-
-    this.setInput("11001010011");
 
     while (this.state === this.EX_STATES.RUNNING)
         this.step();
@@ -95,10 +92,6 @@ Execution.prototype.accept = function () {
 
 Execution.prototype.reject = function () {
     this.state = this.EX_STATES.REJECTED;
-}
-
-Execution.prototype.looping = function () {
-    this.state = this.EX_STATES.LOOPING;
 }
 
 Execution.prototype.error = function (error) {

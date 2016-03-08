@@ -1,5 +1,4 @@
-﻿
-function Execution(machine) {
+﻿function Execution(machine) {
     this.EX_STATES = {
         STOPPED: "Stopped",
         RUNNING: "Running",
@@ -8,7 +7,7 @@ function Execution(machine) {
         ERROR: "Error"
     }
     this.machine = machine;
-    this.state = this.stop();
+    this.state = this.EX_STATES.STOPPED;
 
     this.tape = [];
     this.head = 0;
@@ -18,104 +17,130 @@ function Execution(machine) {
     this.currentStep = 0;
 }
 
-Execution.prototype.setInput = function (string) {
-    // TODO: Filter invalid inputs
-    if (!this.state == this.EX_STATES.RUNNING)
-        return;
+Execution.prototype = {
+    setInput: function(string) {
+        // TODO: Filter invalid inputs
+        if (!this.state == this.EX_STATES.RUNNING)
+            return;
 
-    this.tape = string.split("");
-}
+        this.tape = string.split("");
+    },
 
-Execution.prototype.left = function () {
-        this.error("Reached low limit for head position.");
-    this.head--;
-}
+    apply: function(action) {
+        switch(action) {
+            case "moveLeft":
+                if (this.head <= CONFIG.HEAD_HIGH_LIMIT)
+                    this.error("Reached low limit for head position.");
+                this.head--;
+                break;
 
-Execution.prototype.right = function () {
-    if (this.head >= CONFIG.HEAD_HIGH_LIMIT)
-        this.error("Reached high limit for head position.");
-    this.head++;
-}
+            case "moveRight":
+                if (this.head >= CONFIG.HEAD_HIGH_LIMIT)
+                    this.error("Reached high limit for head position.");
+                this.head++;
+                break;
 
-Execution.prototype.read = function () {
-    var got = this.tape[this.head];
+            case "accept":
+                this.state = this.EX_STATES.ACCEPTED;
+                break;
 
-    return got == undefined ? CONFIG.BLANK_SYMBOL : got;
-}
+            case "reject":
+                this.state = this.EX_STATES.REJECTED;
+                break;
 
-Execution.prototype.write = function (symbol) {
-    check(typeof symbol === "string", this, symbol, "Not a string!");
-    check(symbol.length === 1, this, symbol, "Longer than 1!");
+            default:
+                this.error("Unknown action '" + action + "'");
+                break;
+        }
+    },
 
-    this.tape[this.head] = symbol;
-}
+    read: function() {
+        var got = this.tape[this.head];
+        return got == undefined ? CONFIG.BLANK_SYMBOL : got;
+    },
 
-Execution.prototype.step = function () {
-    if (this.state != this.EX_STATES.RUNNING &&
-            this.state != this.EX_STATES.STOPPED)
-        return;
+    write: function(symbol) {
+        check(typeof symbol === "string", this, symbol, "Not a string!");
+        check(symbol.length === 1, this, symbol, "Longer than 1!");
 
-    var symbol = this.read();
-    var action = this.currentState.got(symbol);
+        this.tape[this.head] = symbol;
+    },
 
-    console.log(this.toString());
-    console.log(">> " + action.toString());
+    changeState: function(state) {
+        this.currentState = state;
+    },
 
-    if (action === undefined)
-        return this.error("Undefined action for symbol '" + symbol + "'");
+    getRule: function(symbol) {
+        var state = this.machine.states[this.currentState];
 
-    action.applySymbol(this);
-    action.applyDirection(this);
-    action.applyState(this);
+        var rule = state.find(function (e) { return e.when === symbol; });
 
-    this.currentStep++;
+        if (rule === undefined) {
+            rule = state.find(function (e) { return e.when === "*"; })
+        }
 
-    if (this.currentStep >= CONFIG.STEP_LIMIT)
-        this.error("Looping");
+        if (rule === undefined) {
+            this.error("Could not find rule for '" + symbol + "'");
+        }
 
-}
+        return rule;
+    },
 
-Execution.prototype.run = function () {
-    this.state = this.EX_STATES.RUNNING;
+    step: function() {
+        console.log(this.toString());
 
-    while (this.state === this.EX_STATES.RUNNING)
-        this.step();
-}
+        if (this.state != this.EX_STATES.RUNNING && this.state != this.EX_STATES.STOPPED)
+            return;
 
-Execution.prototype.stop = function () {
-    this.state = this.EX_STATES.STOPPED;
-}
+        var rule = this.getRule(this.read());
 
-Execution.prototype.accept = function () {
-    this.state = this.EX_STATES.ACCEPTED;
-}
+        if ("write" in rule) {
+            this.write(rule.write);
+        }
 
-Execution.prototype.reject = function () {
-    this.state = this.EX_STATES.REJECTED;
-}
+        if ("action" in rule) {
+            this.apply(rule.action);
+        }
 
-Execution.prototype.error = function (error) {
-    this.EX_STATES.ERROR = "Error: " + error;
-    this.state = this.EX_STATES.ERROR;
-}
+        if ("state" in rule) {
+            this.changeState(rule.state);
+        }
 
-Execution.prototype.toString = function () {
-    var str = "";
-    for (var i = 0; i < this.tapeOffset - this.head; i++)
-        str += "_";
+        this.currentStep++;
+        if (this.currentStep >= CONFIG.STEP_LIMIT)
+            this.error("Step limit exceeded");
+    },
 
-    str += this.tape.join("");
+    run: function() {
+        this.state = this.EX_STATES.RUNNING;
 
-    for (var i = 0; i <= this.head - this.tapeOffset - this.tape.length; i++)
-        str += "_";
+        while (this.state === this.EX_STATES.RUNNING)
+            this.step();
+    },
 
-    str += "\n";
+    error: function(error) {
+        this.EX_STATES.ERROR = "Error: " + error;
+        this.state = this.EX_STATES.ERROR;
+    },
 
-    for (var i = 0; i < this.head; i++)
-        str += " ";
+    toString: function() {
+        var str = "";
+        for (var i = 0; i < this.tapeOffset - this.head; i++)
+            str += "_";
 
-    str += "^";
+        str += this.tape.join("");
 
-    return str;
+        for (var i = 0; i <= this.head - this.tapeOffset - this.tape.length; i++)
+            str += "_";
+
+        str += "\n";
+
+        for (var i = 0; i < this.head; i++)
+            str += " ";
+
+        str += "^";
+
+        return str;
+    }
 }
 

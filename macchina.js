@@ -1,124 +1,63 @@
+var CONFIG = {
+    HEAD_LOW_LIMIT: -1000,
+    HEAD_HIGH_LIMIT: 1000,
+    STEP_LIMIT: 100000,
+    BLANK_SYMBOL: "_",
+    ANY_SYMBOL: "*",
+    ACCEPT_SYMBOL: "ACCEPT",
+    REJECT_SYMBOL: "REJECT"
+}
 
-function check(condition, checker, culprit, message) {
+
+function check(condition, message) {
     if (!condition) {
-        var name = checker.constructor.name;
-        throw "error in '" + name + "': " + message + " Got <" + culprit + ">";
+        throw (message || "ERROR");
     }
 }
 
 
-function Machine() {
-    if (arguments.callee._singleton)
-        return arguments.callee._singleton;
-
-    arguments.callee._singleton = this;
-
+function Macchina() {
     this.initialState = null;
     this.states = {};
     this.execution = null;
-
 }
 
-Machine.prototype.addState = function (state) {
-    check(state instanceof State, this, state, "Not a state object!");
+Macchina.prototype = {
+    state: function(name, ...rules) {
+        check(typeof name === "string", "State names must be strings!");
+        check(!(name in this.states), "State '" + name + "' already defined!");
 
-    this.states[state.name] = state;
+        this.states[name] = rules;
 
-    if (this.initialState == null)
-        this.initialState = state;
-}
+        if (this.initialState == null) {
+            this.setInitialState(name);
+        }
+    },
 
-Machine.prototype.state = function (name) {
-    check(typeof name === "string", this, name, "State names must be strings!");
-    check(name in this.states, this, name, "State not in this machine!");
+    setInitialState: function(name) {
+        check(typeof name === "string", "State names must be strings!");
+        check((name in this.states), "State '" + name + "' does not exist!");
 
-    return this.states[name];
-}
+        this.initialState = name;
+    },
 
-Machine.prototype.setInitialState = function (state) {
-    check(state instanceof State, this, state, "Not a state object!");
-
-    this.initialState = state;
-}
-
-Machine.prototype.run = function (input) {
-    this.execution = new Execution(this);
-    this.execution.setInput(input);
-    this.execution.run();
-    return this.execution.state;
-}
-
-Machine.prototype.toString = function () {
-    var keys = Object.keys(this.states);
-    var strings = [];
-
-    for (var i = 0; i < keys.length; i++) {
-        strings.push(this.states[keys[i]].toString());
+    run: function(input) {
+        this.execution = new Execution(this);
+        this.execution.setInput(input);
+        this.execution.run();
+        return this.execution.state;
     }
-
-    return strings.join("\n\n");
 }
 
+var tm = new Macchina();
 
-function State(name) {
-    this.name = name;
-    this.actions = {}
-}
+tm.state(
+    "even",
+    { when: "*", action: "moveRight" }
+)
 
-State.prototype.toString = function () {
-    var keys = Object.keys(this.actions);
-    var strings = [];
+console.log(tm);
 
-    for (var i = 0; i < keys.length; i++) {
-        var action = this.actions[keys[i]];
-        var repr = ["on '", keys[i], "'  ->  ", action.toString()].join("");
-        strings.push(repr);
-    }
-
-    return "State <" + this.name + ">\n\t" + strings.join("\n\t");
-}
-
-State.prototype.on = function(read) {
-    check(typeof read === "string", this, read, "Not a string!");
-    check(read.length === 1, this, read, "Length larger than 1!");
-
-    this.actions[read] = new Action;
-    return this.actions[read];
-}
-
-State.prototype.got = function(read) {
-    var action = this.actions[read];
-
-    if (action === undefined)
-        return this.actions[CONFIG.ANY_SYMBOL];
-
-    return action;
-}
-
-var tm = new Machine();
-
-
-//tm.addState(new State("even"));
-
-//tm.state("even").on("1").right().goto("odd");
-//tm.state("even").on("*").right();
-//tm.state("even").on("_").accept();
-
-
-//tm.addState(new State("odd"));
-
-//tm.state("odd").on("*").right().goto("even");
-//tm.state("odd").on("0").right();
-//tm.state("odd").on("_").reject();
-
-tm.addState(new State("state"));
-
-tm.state("state").on("0").write("1").right();
-tm.state("state").on("1").write("0").right();
-tm.state("state").on("*").stop();
-
-console.log(tm.toString());
-
-console.log(tm.run("10011101010010101101"));
+console.log(tm.run("10001"));
 
 
